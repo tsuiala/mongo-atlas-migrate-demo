@@ -1,0 +1,20 @@
+{
+  "assigned_to": "Alan Tsui",
+  "assignment_group": "DevPlat-Reliability-A-Asia",
+  "backout_plan": "Revert to previous version of app left from blue-green deployment.",
+  "cmdb_ci": "PaaS-Samba Client-CAC-Preview",
+  "correlation_id": "{correlation_id}",
+  "description": "Deploy using Concourse pipelines. Dat Item #1",
+  "end_date": "{end_date}",
+  "implementation_plan": "Trigger Concourse jobs: https://concourse.platform.manulife.io/teams/main/pipelines/mongo-atlas-migrate-demo/jobs/deploy-dev",
+  "justification": "Test deployment of demo app through Enterprise Pipeline",
+  "production_system": "true",
+  "requested_by": "Alan Tsui",
+  "risk": "BAU",
+  "short_description": "Test deployment of demo app through Enterprise Pipeline",
+  "start_date": "{start_date}",
+  "test_plan": "Automated integration tests should pass",
+  "u_dal_ci": "DAL - Development Platform Code Changes",
+  "u_ml_impact": "Canada,Asia,United States",
+  "u_outage_description": "None since using blue-green deployments."
+}

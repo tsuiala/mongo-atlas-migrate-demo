@@ -1,0 +1,5 @@
+CREATE TABLE dummy_table (
+  id int NOT NULL AUTO_INCREMENT,
+  dummy VARCHAR(255) NOT NULL,
+  PRIMARY KEY (id)
+);

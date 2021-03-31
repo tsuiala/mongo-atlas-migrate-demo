@@ -1,0 +1,177 @@
+---
+groups:
+- name: mongo-atlas-migrate-demo
+  jobs:
+  - migrate-dev-db
+  - test-dev
+  - artifactory-publish
+  - deploy-dev
+  - migrate-db-dev
+
+resource_types:
+- name: migrate-db-dev
+  type: enterprise-pipeline-api
+  source:
+    api: db-migrate-mongo-simple
+    method: POST
+    debug: true
+    ssl_verify: false
+    json:
+      buildTeamName: "{BUILD_TEAM_NAME}"         #populated automatically
+      buildId: "{BUILD_ID}"                      #populated automatically
+      buildName: "{BUILD_NAME}"                  #populated automatically
+      buildJobName: "{BUILD_JOB_NAME}"           #populated automatically
+      buildPipelineName: "{BUILD_PIPELINE_NAME}" #populated automatically
+      org: "DPSE-ASIA"
+ 
+      #Specifies the PCF environment
+      division: "SEA Preview"
+ 
+      buildTaskName: "db-migrate"                # Name of task which runs the noop.sh script on the mongodb-tools Docker image
+      instanceName: "app-health-check-db"       # Name of the database to be migrated
+      plan: "M10-small"                          # Plan for new MongoDB Atlas service instance
+      restartAppAfterMigration: "true"           # Flag for whether to restart the app or not after the new DB instance has been bound to it when migration is complete
+      teamEmail: "alan_tsui@manulife.com" # Email for PROD approval
+
+- name: migrate-dev-db
+  serial: true
+  public: true
+  plan:
+  - aggregate:
+    - get: source
+      resource: src-master
+      trigger: false
+  - task: db-migrate
+    tags: [MONGO]
+    file: source/concourse/tasks/db-migrate.yml
+    params:
+        TERM: xterm
+  - put: migrate-db-dev
+
+- name: enterprise-pipeline-api
+  type: docker-image
+  source:
+    repository: docker.artifactory.platform.manulife.io/concourse-enterprise-pipeline-http-api-resource
+    tag: latest
+resources:
+- name: src-dev
+  type: git
+  source:
+    branch: develop
+    uri: {{GIT_SSH_URI}}
+    private_key: {{GIT_PRIVATE_KEY}}
+    skip_ssl_verification: true
+
+- name: src-master
+  type: git
+  source:
+    branch: master
+    uri: {{GIT_SSH_URI}}
+    private_key: {{GIT_PRIVATE_KEY}}
+    skip_ssl_verification: true
+
+- name: cf-push-dev
+  type: enterprise-pipeline-api
+  source:
+    api: fly
+    method: POST
+    debug: true
+    ssl_verify: false
+    json:
+      buildTeamName: "{BUILD_TEAM_NAME}"         #populated automatically
+      buildId: "{BUILD_ID}"                      #populated automatically
+      buildName: "{BUILD_NAME}"                  #populated automatically
+      buildJobName: "{BUILD_JOB_NAME}"           #populated automatically
+      buildPipelineName: "{BUILD_PIPELINE_NAME}" #populated automatically
+      org: {{CF_DEV_ORG}}
+
+      #Full path to script which will execute 'cf push' and optionally 'cf create-service' commands
+      #the 'source' folder name here should match with the name specified in the 'get' in the src-dev git resource below
+      deploy_script: "source/concourse/scripts/push-dev.sh"
+
+      #Specifies the PCF environment
+      division: "SEA"
+
+      #The name of the task which the push script specified above should run after
+      buildTaskName: "assemble"
+- name: migrate-db-dev
+  type: enterprise-pipeline-api
+  source:
+    api: db-migrate-mongo-simple
+    method: POST
+    debug: true
+    ssl_verify: false
+    json:
+      buildTeamName: "{BUILD_TEAM_NAME}"         #populated automatically
+      buildId: "{BUILD_ID}"                      #populated automatically
+      buildName: "{BUILD_NAME}"                  #populated automatically
+      buildJobName: "{BUILD_JOB_NAME}"           #populated automatically
+      buildPipelineName: "{BUILD_PIPELINE_NAME}" #populated automatically
+      org: "DPSE-ASIA"
+ 
+      #Specifies the PCF environment
+      division: "SEA"
+ 
+      buildTaskName: "db-migrate"                # Name of task which runs the noop.sh script on the mongodb-tools Docker image
+      instanceName: "standalone-test"       # Name of the database to be migrated
+      plan: "M10-small"                          # Plan for new MongoDB Atlas service instance
+      restartAppAfterMigration: "true"           # Flag for whether to restart the app or not after the new DB instance has been bound to it when migration is complete
+     
+jobs:
+- name: migrate-dev-db
+  serial: true
+  public: true
+  plan:
+  - aggregate:
+    - get: source
+      resource: src-master
+      trigger: false
+  - task: db-migrate
+    tags: [MONGO]
+    file: source/concourse/tasks/db-migrate.yml
+    params:
+        TERM: xterm
+  - put: migrate-db-dev
+
+- name: test-dev
+  serial: true
+  public: true
+  plan:
+  - aggregate:
+    - get: source
+      trigger: true
+      resource: src-dev
+  - task: test-linux
+    file: source/concourse/tasks/test-linux.yml
+    params:
+      TERM: xterm
+
+- name: artifactory-publish
+  serial: true
+  public: true
+  plan:
+  - aggregate:
+    - get: source
+      resource: src-dev
+      passed: [test-dev]
+      trigger: true
+  - task: publish
+    file: source/concourse/tasks/artifactory-publish-gradle.yml
+    params:
+      TERM: xterm
+
+- name: deploy-dev
+  serial: true
+  public: true
+  plan:
+  - aggregate:
+    - get: source
+      resource: src-dev
+      passed: [test-dev]
+      trigger: true
+  - task: assemble
+    file: source/concourse/tasks/assemble.yml
+    params:
+      TERM: xterm
+      MY_ENV_VAR: {{MY_ENV_VAR}}
+  - put: cf-push-dev

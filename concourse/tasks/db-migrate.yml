@@ -1,0 +1,16 @@
+---
+platform: linux
+ 
+image_resource:
+  type: docker-image
+  source:
+    repository: gees-docker.artifactory.platform.manulife.io/mongodb-tools
+ 
+inputs:
+- name: source
+ 
+outputs:
+- name: source
+ 
+run:
+  path: source/concourse/scripts/noop.sh

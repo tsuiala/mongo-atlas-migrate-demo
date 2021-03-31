@@ -1,0 +1,6 @@
+--2020-08-28 12:23:16--  https://concourse.platform.manulife.io/api/v1/cli?arch=amd64
+Resolving concourse.platform.manulife.io (concourse.platform.manulife.io)... 10.237.22.7
+Connecting to concourse.platform.manulife.io (concourse.platform.manulife.io)|10.237.22.7|:443... connected.
+HTTP request sent, awaiting response... 400 Bad Request
+2020-08-28 12:23:17 ERROR 400: Bad Request.
+
